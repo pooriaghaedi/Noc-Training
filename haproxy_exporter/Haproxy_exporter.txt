@@ -1,0 +1,47 @@
+apt install haproxy -y
+vim haproxy.cfg 
+haproxy -c -f /etc/haproxy/haproxy.cfg 
+systemctl restart haproxy.service 
+useradd -M -r -s /bin/false haproxy_exporter
+wget https://github.com/prometheus/haproxy_exporter/releases/download/v0.13.0/haproxy_exporter-0.13.0.linux-amd64.tar.gz
+tar -xvf haproxy_exporter-0.13.0.linux-amd64.tar.gz
+cd haproxy_exporter-0.13.0.linux-amd64
+cp haproxy_exporter /usr/local/bin/
+vim /etc/systemd/system/haproxy_exporter.service
+systemctl daemon-reload
+
+
+
+
+
+########/etc/systemd/system/haproxy_exporter.service#####
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+User=haproxy_exporter
+Group=haproxy_exporter
+Type=simple
+ExecStart=/usr/local/bin/haproxy_exporter --haproxy.scrape-uri="http://172.16.30.45:8404/monitor?stats;csv"
+
+[Install]
+WantedBy=multi-user.target
+
+
+########haproxy.cfg##########
+frontend class.local
+ 	bind 172.16.30.45:80
+	default_backend grafana_servers
+
+backend grafana_servers
+	balance roundrobin
+	server server2 172.16.30.37:3000 cookie server2
+	server server1 172.16.30.45:3000 cookie server1
+	 
+listen stats
+  bind *:8404
+  stats enable
+  stats uri /monitor
+  stats refresh 2s 
+
