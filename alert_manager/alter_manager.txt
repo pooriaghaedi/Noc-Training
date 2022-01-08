@@ -1,0 +1,59 @@
+tar -xvf alertmanager-0.23.0.linux-amd64.tar.gz
+cd alertmanager-0.23.0.linux-amd64
+chown alertmanager:alertmanager /usr/local/bin/alertmanager
+cp alertmanager.yml /etc/alertmanager/alertmanager.yml
+mkdir -p /etc/amtool/
+cp amtool /usr/local/bin/
+vim /etc/amtool/config.yml
+vim /etc/systemd/system/alertmanager.service
+systemctl daemon-reload
+
+
+
+
+
+
+#######/etc/systemd/system/alertmanager.service#######
+[Unit]
+Description=Alertmanager for prometheus
+
+[Service]
+Restart=always
+User=alertmanager
+group=alertmanager
+Type=simple
+ExecStart=/usr/local/bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/var/lib/alertmanager/data --cluster.peer=172.16.30.44:9093
+ExecReload=/bin/kill -HUP $MAINPID
+TimeoutStopSec=20s
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target
+
+
+########/etc/amtool/config.yml#########
+alertmanager.url: http://localhost:9093
+
+########/etc/prometheus/prometheus.yaml#######
+alerting:
+  alertmanagers:
+  - static_configs:
+      - targets: ['172.16.30.45:9095']
+rule_files:
+        - "/etc/prometheus/rules/*.yaml"
+
+
+
+#########/etc/prometheus/rules/rule1.yaml##########
+groups:
+  - name: node expoerters
+    rules:
+    - alert: ServerDown
+      expr: up{job="nodes"} == 0
+      labels:
+        severity : critical
+      annotations:
+        summary: Linux Server Down
+
+
+
